@@ -27,7 +27,7 @@ If we don't check the data beforehand, it's easy to make some false assumptions 
 ### Loading the Dataset
 
 ```{r}
-reviews <- read_csv("resources/book_reviews.csv")
+reviews <- read_csv("sources/book_reviews.csv")
 col_names <- colnames(reviews)
 head(reviews)
 ```
