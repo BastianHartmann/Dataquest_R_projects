@@ -1,0 +1,87 @@
+job_id,job_type,salary_min,salary_max,payment_period
+1,Full Time,50000,60000,year
+2,Full Time,90000,120000,year
+3,Full Time,80000,90000,year
+4,Full Time,50000,60000,year
+5,Both,201480,201480,year
+6,Full Time,0,38000,year
+7,Both,227760,227760,year
+8,Both,175200,219000,year
+9,Full Time,235819.2,235819.2,year
+10,Full Time,0,42500,year
+11,Full Time,90000,95000,year
+12,Full Time,38000,46000,year
+13,Full Time,51708.8,81475.47,year
+14,Temporary/Contract/Project,0,481800,year
+15,Full Time,95000,105000,year
+16,Both,192720,280320,year
+17,Full Time,198501.6,198501.6,year
+18,Both,8760,8760,year
+19,Both,8760,8760,year
+20,Full Time,55000,60000,year
+21,Full Time,70000,75000,year
+22,Full Time,110000,120000,year
+23,Full Time,0,100000,year
+24,Full Time,100000,130000,year
+25,Full Time,107000,135000,year
+26,Full Time,0,100000,year
+27,Full Time,170820,170820,year
+28,Both,157680,192720,year
+29,Full Time,35000,40000,year
+30,Full Time,80000,100000,year
+31,Both,140160,140160,year
+32,Full Time,350400,525600,year
+33,Both,700800,876000,year
+34,Full Time,175200,271560,year
+35,Full Time,175200,271560,year
+36,Full Time,0,109000,year
+37,Full Time,90000,90000,year
+38,Full Time,90000,120000,year
+39,Full Time,90000,120000,year
+40,Full Time,0,65000,year
+41,Full Time,100000,100000,year
+42,Full Time,0,306600,year
+43,Full Time,231877.19999999998,231877.19999999998,year
+44,Full Time,85000,115000,year
+45,Both,262800,332880,year
+46,Undetermined,0,131400,year
+47,Undetermined,0,131400,year
+48,Undetermined,0,131400,year
+49,Undetermined,0,131400,year
+50,Undetermined,0,131400,year
+51,Both,210240,306600,year
+52,Both,210240,306600,year
+53,Full Time,50000,70000,year
+54,Full Time,65000,75000,year
+55,Full Time,1,2,year
+56,Full Time,0,50000,year
+57,Full Time,80000,220000,year
+58,Full Time,80000,220000,year
+59,Full Time,80000,220000,year
+60,Full Time,90000,105000,year
+61,Full Time,0,110000,year
+62,Full Time,90000,110000,year
+63,Full Time,0,90000,year
+64,Full Time,90000,100000,year
+65,Full Time,110000,120000,year
+66,Full Time,100000,125000,year
+67,Full Time,100000,125000,year
+68,Full Time,60000,80000,year
+69,Full Time,297840,383250,year
+70,Full Time,75000,110000,year
+71,Full Time,90000,120000,year
+72,Full Time,0,75000,year
+73,Full Time,70000,80000,year
+74,Full Time,45000,50000,year
+75,Full Time,45000,50000,year
+76,Full Time,80000,220000,year
+77,Full Time,120000,130000,year
+78,Full Time,148920,162060,year
+79,Full Time,850000,950000,year
+80,Full Time,850000,950000,year
+81,Full Time,100000,130000,year
+82,Full Time,481800,525600,year
+83,Full Time,481800,525600,year
+84,Full Time,110000,150000,year
+85,Full Time,185000,195000,year
+86,Full Time,125000,175000,year
