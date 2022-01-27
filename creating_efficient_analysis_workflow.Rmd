@@ -2,7 +2,7 @@
 title: "Creating An Efficient Data Analysis Workflow"
 author: "Bastian Hartmann"
 date: "22 Januar 2022"
-output: html_document
+output: github_document
 ---
 
 In this project, we will be acting as a data analyst for a company that sells books for learning programming. Our company has produced multiple books, and each has received many reviews. Our company wants us to check out the sales data and see if we can extract any useful information from it.
