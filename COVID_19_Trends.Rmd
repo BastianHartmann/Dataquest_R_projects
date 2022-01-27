@@ -1,6 +1,6 @@
 ---
 title: "Investigating COVID-19 Virus Trends"
-output: html_notebook
+output: github_document
 ---
 
 A pneumonia of unknown cause detected in Wuhan, China was first internationally reported from China on 31 December 2019. Today we know this virus as Coronavirus. COVID-19 which stands for COronaVIrus Disease is the disease caused by this virus. Since then, the world has been engaged in the fight against this pandemic. Several measures have therefore been taken to "flatten the curve". We have consequently experienced social distancing and many people have passed away as well.
@@ -18,7 +18,7 @@ This analysis tries to provide an answer to this question: **Which countries hav
 library(readr)
 
 # Loading the dataset
-covid_df = read.csv("scources/covid19.csv")
+covid_df = read.csv("sources/covid19.csv")
 ```
 
 After loading the dataset, we can explore it:
@@ -65,6 +65,7 @@ Looking at the few lines of our dataset we displayed in the previous step, we ca
 We will, therefore, extract only the country-level data in order to not bias our analyses. To do so, we filter the data to keep only the data related to `"All States"`. `"All States"` represents the value of the column Province_State to specify that the COVID-19 data is only available at the country level.
 
 ```{r}
+library(dplyr)
 covid_df_all_states <- covid_df %>% filter(Province_State == "All States") %>% select(-Province_State)
 
 # Data glimpse
