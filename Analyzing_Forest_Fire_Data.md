@@ -254,7 +254,7 @@ We have the following other variables:
 -   `temp`
 -   `RH`
 -   `wind`
--   \`rain\`\`
+-   `rain`
 
 Let’s create some visualizations that look at the relationship between
 `month` and each of the columns above. Because for now, we only want to
@@ -317,3 +317,107 @@ fires in these two months seem to be:
 ------------------------------------------------------------------------
 
 ## Examining Forest Fire Severety
+
+Let’s investigate further! So far, we’ve only looked at the relationship
+between the variables in the data and the *frequency* of forest fires.
+Fires can also range in intensity too, so it might be useful to know
+what factors influence this as well. In this data set, the `area`
+variable contains data on the number of hectares of forest that burned
+during the forest fire. We’ll use this variable as an indicator of the
+severity of the fire.
+
+The idea behind using `area` as a proxy is that worse fires will result
+in a larger burned area. Of course, this won’t be true in all cases, but
+it is a reasonable assumption to make.
+
+First, we create scatter plots to see what can be learned about
+relationships between the area burned by a forest fire and the following
+variables:
+
+-   **FFMC:** Fine Fuel Moisture Code index from the FWI system: 18.7 to
+    96.20
+-   **DMC:** Duff Moisture Code index from the FWI system: 1.1 to 291.3
+-   **DC:** Drought Code index from the FWI system: 7.9 to 860.6
+-   **ISI:** Initial Spread Index from the FWI system: 0.0 to 56.10
+-   **temp:** Temperature in Celsius degrees: 2.2 to 33.30
+-   **RH:** Relative humidity in percentage: 15.0 to 100
+-   **wind:** Wind speed in km/h: 0.40 to 9.40
+-   **rain:** Outside rain in mm/m2 : 0.0 to 6.4
+
+In this case, we’re interested in whether the variables above may
+*affect* forest fire area. For that reason, we place `area` on the
+y-axes and the other variables on the x-axes of your scatter plots.
+
+``` r
+forest_fires %>%
+  pivot_longer(
+    cols = c("FFMC","DMC","DC","ISI","temp","RH","wind","rain"),
+    names_to = "variables",
+    values_to = "var_vals"
+  ) %>%
+    ggplot(aes(x=var_vals,y=area))+
+    geom_point(size=3)+
+    facet_wrap(facets = vars(variables),
+               scales = "free_x")
+```
+
+![](Analyzing_Forest_Fire_Data_files/figure-gfm/Scatter_Plotts_Area_vs_variables-1.png)<!-- -->
+
+From the scatter plots we see it’s hard to understand any relationships
+between the variables due to a few high outliers of the `area` values,
+and many values of `area` that are zero or close to zero.
+
+The following histogram of the `area` values clearly illustrates why the
+scatter plots look the way they do:
+
+``` r
+forest_fires %>%
+  ggplot(aes(x=area))+
+  geom_histogram(bins=30)
+```
+
+![](Analyzing_Forest_Fire_Data_files/figure-gfm/Histogram_Area_Distribution-1.png)<!-- -->
+
+------------------------------------------------------------------------
+
+## Outlier Problems
+
+There are outliers in the area column, which represent fires that caused
+inordinate amounts of damage compared to the other fires in the data. To
+more clearly visualize relationships between variables, we first have to
+do some filtering on the `area` values bevore plotting the scatter plots
+again. More precisely, we will:
+
+-   except rows with zero values of `area`
+-   except rows with values of `area` higher than 600
+
+``` r
+quants = quantile(forest_fires[["area"]])
+quant_25 = quants[2]
+quant_75 = quants[4]
+filtered_forest_fires <- forest_fires %>%
+  filter(
+    area != 0 &
+    #(area < quant_25-(1.5*IQR(area)) | (area > quant_75+(1.5*IQR(area))))
+    area < 600
+  )
+
+filtered_forest_fires %>%
+  pivot_longer(
+    cols = c("FFMC","DMC","DC","ISI","temp","RH","wind","rain"),
+    names_to = "variables",
+    values_to = "var_vals"
+  ) %>%
+    ggplot(aes(x=var_vals,y=area))+
+    geom_point(size=3)+
+    facet_wrap(facets = vars(variables),
+               scales = "free_x"
+    )
+```
+
+![](Analyzing_Forest_Fire_Data_files/figure-gfm/Scatter_Plotts_Filtered_Area_vs_variables-1.png)<!-- -->
+
+Based on the above scatter plotts, it seems that **DC**, **FFMC** and
+**temp** could have a *positive* correlation on the severity of forest
+fires. Whereas, **wind**, **RH** and **ISI** could have a *negative*
+correlation on the severity of forest fires.
