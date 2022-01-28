@@ -7,7 +7,7 @@ library(readr)
 library(ggplot2)
 
 # loading the monster_jobs dataset
-monster_jobs_clean <- read_csv("./scources/monster_jobs_clean.csv")
+monster_jobs_clean <- read_csv("./sources/monster_jobs_clean.csv")
 View(monster_jobs_clean)
 
 # ploting job_id vs salary_min
