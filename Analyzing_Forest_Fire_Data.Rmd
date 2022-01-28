@@ -211,3 +211,4 @@ For each variable, the months **August** and **September** are highlighted with 
 
 ## Examining Forest Fire Severety
 
+
