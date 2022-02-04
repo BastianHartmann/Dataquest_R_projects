@@ -1,0 +1,252 @@
+---
+title: "Creating An Efficient Data Analysis Workflow - Part 2"
+output: github_document
+author: "Bastian Hartmann"
+date: "03 February 2022"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(lubridate)
+```
+
+## Introduction
+
+In this project, Like in the last guided project, we are taking on the role of as an analyst for a book company. The company has provided us more data on some of its 2019 book sales, and it wants us to extract some usable knowledge from it. It launched a new program encouraging customers to buy more books on July 1st, 2019, and it wants to know **if this new program was successful at increasing sales and improving review quality**. As the analyst, this will be your job to figure out.
+
+You can download the dataset [here](https://data.world/dataquest/book-sales-data).
+
+---
+
+## Data Exploration
+
+As first step, we load the dataset and explore the data itself and make note of any potential problems that we might run into.
+
+Therefore, we look for the following things:
+
+- How big is the dataset? What are the column names and what do they represent?
+- What are the types of each of the columns?
+- Do any of the columns have missing data?
+
+```{r}
+# Loading the dataset
+sales <- read_csv("sources/sales2019.csv",show_col_types = FALSE)
+
+# Explore the size
+print(dim(sales))
+
+# Explore the first 10 rows of the dataset
+knitr::kable(head(sales))
+
+# Explore the data type of each column
+str(sales)
+```
+
+From the two observations above, we can see that the dataset consist of 5000 rows and 5 columns.
+
+The columns and their current data types are:
+
+- **date** [Type: *character*]: The date of the corresponding book sale.
+- **user_submitted_review** [Type: *character*]: The submitted review by the buyer as one of 9 distinct descriptions.
+- **title** [Type: *character*]: Title of the sold book.
+- **total_purchased** [Type: *double*]: Total number of purchased books.
+- **customer_type** [Type: *character*]: Describes the customer type as either *Business* or *Individual*.
+
+```{r, results='hold'}
+# Missing values of dataset
+ColNa <- colnames(sales)
+cat("Column","\t","Missing Values",fill = TRUE)
+cat(" "," ","\n")
+for (i in ColNa){
+  missNum <- sum(is.na(sales[[i]]))
+  cat(i,"\t",toString(missNum),fill = TRUE)
+
+}
+```
+
+Here, we can see that the columns `user_submitted_review` (885) and `total_purchased` (718) both have missing values that could leed to some problems if not taken care of.
+
+---
+
+## Handling Missing Data
+
+We are going to handle the two columns with missing columns differently. The reason for this is due to the fact that we care a lot more about the `total_purchased` column, because it contains the actual information on book sales. We want to determine if the company's new program helped to improve sales.
+
+In short, we're going to:
+
+1. remove any rows that have missing data in `user_submitted_review` and
+2. for `total_purchased`, we're are going to replace all of the `NA` values with an average value that we calculate from the complete dataset.
+
+Filling in missing data with average values is useful because they are often the best guesses for what the purchase would have been. We do this in everyday life too. If someone asked you how much time you slept each day, you're more likely than not to answer with the average amount of time you sleep in a week. We're going to apply the same concept here.
+
+```{r}
+# 1.  remove any rows that have missing data in `user_submitted_review`
+sales_filtered <- sales %>%
+  filter(!(is.na(user_submitted_review)))
+
+cat("Dims:","\t",dim(sales_filtered))
+```
+
+From the dimensions of the `sales_filtered` dataframe, we can see that the 885 rows are removed where `user_submitted_review` had a missing value
+
+```{r}
+# 2. replace all of the `NA` values with an average value for `total_purchased`
+purchased_mean = mean(sales_filtered$total_purchased,na.rm = TRUE)
+sales_filtered <- sales_filtered %>%
+  replace_na(list(total_purchased=purchased_mean))
+
+cat("Dims:","\t",dim(sales_filtered))
+
+```
+
+We see that our operation didn't removed any rows. But looking at the missing values of `total_purchased` we can see that all `NAs` have been replaced:
+
+```{r}
+sum(is.na(sales_filtered$total_purchased)) %>% cat(" missing values")
+```
+
+---
+
+## Processing Review Data
+
+The `user_submitted_review` column contains reviews in the form of sentences. Ultimately, we want to be able to classify reviews as either positive or negative. This allows us to count the number of negative or positive reviews in the analysis part of the workflow. On this screen, we'll perform the cleaning and processing necessary to turn each of the review sentences into the classifications we want.
+
+Therefore, we first print all unique sentences of the `user_submitted_review` column to detect specific words or phrases that help indicate if the review is positive or not:
+
+```{r}
+unique(sales_filtered$user_submitted_review) %>%
+  knitr::kable()
+```
+
+Observing this list, we can conclude that the following words can be used to detect positive feedbacks:
+
+- Awesome
+- OK
+- Never
+- a lot
+
+Next, we create a new column `review_positive` that indicates if the review is positive or not by `TRUE` or `FALSE`, respectively.
+
+```{r}
+is_positive <- function(in_str){
+  bool_val <- case_when(
+    str_detect(in_str,"Awesome") ~ TRUE,
+    str_detect(in_str,"OK") ~ TRUE,
+    str_detect(in_str,"Never") ~ TRUE,
+    str_detect(in_str,"a lot") ~ TRUE,
+    TRUE ~ FALSE
+  )
+  return(bool_val)
+}
+
+sales_filtered <- sales_filtered %>%
+  mutate(
+    review_positive = map(user_submitted_review,is_positive)
+  )
+
+knitr::kable(head(sales_filtered))
+```
+
+---
+
+## Comparing Book Sales Between Pre- and Post-Program Sales
+
+With the review data and order quantities processed into a usable form, we can finally make a move towards answering the main question of the analysis:
+
+** Was the new book program effective in increasing book sales?**
+
+ The program started on July 1, 2019 and the data you have contains all of the sales for 2019. There are still some preparatory steps we need to take before performing the analysis, so we'll complete these first before conducting the analysis.
+ 
+ 1. **First**, the dates are currently represented in string form. These must be properly formatted before we can make any comparisons based on date and time.
+ 2. **Second**, we need a clear way to distinguish between sales that happen *before* the program starts and those that happen *after.* We need to distinguish between these two groups so that we can use what we've learned to easily calculate the summary values we want from the data.
+ 3. **Finally**, this analysis should be put into a neat form that can be easily read and understood by anyone looking at it.
+ 
+```{r message=FALSE, warning=FALSE}
+# 1. representing the dates in the date type
+sales_filtered <- sales_filtered %>%
+  mutate(date=mdy(date))
+
+# 2. Creating new grouping column that help distinguish between sales before July 1, 2019 and after this date
+ref_date = mdy("07/01/2019")
+sales_filtered <- sales_filtered %>%
+  mutate(date_status=if_else(date<ref_date,"Pre","Post"))
+
+# 3. Summarizing the book sales
+sales_summ <- sales_filtered %>%
+  group_by(title,date_status) %>%
+  summarize(sumOfSales=sum(total_purchased))
+
+knitr::kable(sales_summ)
+```
+ 
+```{r Bar_plot_sales_summary_pre_vs_post}
+sales_summ$date_status <- factor(sales_summ$date_status,levels=c("Pre","Post"))
+
+sales_summ %>%
+  ggplot(aes(x=title,y=sumOfSales,fill=date_status))+
+  geom_col(position = "dodge",width=.5)+
+  xlab("Book")+
+  ylab("Sum of Purchases")+
+  theme(axis.text.x = element_text(angle=60,vjust=1,hjust=1))
+  
+```
+ 
+ 
+ It looks like the program had only an positive effect on the book sales of `R For Dummies` and `Secrets Of R For Advanced Students`.
+ 
+ ---
+ 
+ ## Comparing Book Sales Within Customer Type
+ 
+In the last step, we just compared sales that were before and after July 1, 2019. It's possible that individual customers responded better to the program and bought more books in response to the program. Or, it could have been businesses that bought more books. In order to explore this sub-analysis, we also need to divide the sales before and after July 1, 2019 into sales that were for individuals versus businesses.
+
+```{r message=FALSE, warning=FALSE}
+sales_summ_2 <- sales_filtered %>%
+  group_by(title,customer_type,date_status) %>%
+  summarize(sumOfSales=sum(total_purchased))
+
+knitr::kable(sales_summ_2)
+```
+
+```{r Bar_plot_sales_summary_pre_vs_post_with_customer_type, fig.height=8, fig.width=8}
+sales_summ_2$date_status <- factor(sales_summ_2$date_status,levels=c("Pre","Post"))
+
+sales_summ_2 %>%
+  ggplot(aes(x=title,y=sumOfSales,fill=date_status))+
+  geom_col(position = "dodge",width=.5)+
+  xlab("Book")+
+  ylab("Sum of Purchases")+
+  theme(axis.text.x = element_text(angle=60,vjust=1,hjust=1))+
+  facet_wrap(facets = vars(customer_type),nrow = 2,scales = "free_y")
+```
+
+This shows that for most of the books, the program actually *boosted* the purchases in the business sector. Whereas, in the individual sector the purchases seems to *went down*.
+
+---
+
+## Comparing Review Sentiment Between Pre- and Post-Program Sales
+
+The last question that we need to answer with the data is, **did review scores improve as a result of the program?** 
+
+```{r message=FALSE, warning=FALSE}
+review_sum <- sales_filtered %>%
+  group_by(title,date_status) %>%
+  summarize(positiveRev=sum(as.integer(review_positive)))
+
+knitr::kable(review_sum)
+```
+
+
+```{r Bar_plot_positive_reviews}
+review_sum$date_status <- factor(review_sum$date_status,levels=c("Pre","Post"))
+
+review_sum %>%
+  ggplot(aes(x=title,y=positiveRev,fill=date_status))+
+  geom_col(position = "dodge",width=.5)+
+  xlab("Book")+
+  ylab("Sum of Purchases")+
+  theme(axis.text.x = element_text(angle=60,vjust=1,hjust=1))
+```
+
+We can conclude from this graph, that there's slightly more reviews before the program, but this difference seems negligible.
