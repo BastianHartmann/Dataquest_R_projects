@@ -1,0 +1,276 @@
+---
+title: "NYC Schools Perceptions"
+author: "Bastian Hartmann"
+date: "05 February 2022"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+In this project, we'll investigate the responses to [surveys](https://data.cityofnewyork.us/Education/2011-NYC-School-Survey/mnz3-dyi8) designed to gauge parent, student, and teacher perceptions of the quality of New York City schools. 
+
+More precisely, we want to investigate the following questions:
+
+- Do student, teacher, and parent perceptions of NYC school quality appear to be related to demographic and academic success metrics?
+- Do students, teachers, and parents have similar perceptions of NYC school quality?
+
+The data we use, can be downloaded [here](https://data.cityofnewyork.us/Education/2011-NYC-School-Survey/mnz3-dyi8). The `.zip` folder contains five files:
+
+- `Survey Data Dictionary.xls`
+- `masterfile11_gened_final.xlsx`
+- `masterfile11_gened_final.txt`
+- `masterfile11_d75_final.xlsx`
+- `masterfile11_d75_final.txt`
+
+`Survey Data Dictionary.xls`  contains metadata that will be useful as you decide how to clean and prepare the survey data for analysis.
+
+`masterfile11_gened_final.xlsx` and `masterfile11_gened_final.txt` contain survey data for "general education" schools — those that do not specifically serve populations with special needs.
+
+`masterfile11_d75_final.xlsx` and `masterfile11_d75_final.txt` contain survey data for [District 75](https://www.schools.nyc.gov/special-education/school-settings/district-75) schools, which provide exceptional education support for children with special needs such as learning or physical disabilities.
+
+In addition, we also use the `"combined.csv"` file that can be downloaded [here](https://data.world/dataquest/nyc-schools-data/workspace/file?filename=combined.csv). This file contains various information about NYC schools like SAT scores and ethnicity.
+
+## Loading the Survey Data
+
+First, we have to import the data:
+
+```{r}
+combined <- read_csv("sources/combined.csv",show_col_types = FALSE)
+survey_gened <- read_tsv("sources/2011 data files online/masterfile11_gened_final.txt",show_col_types = FALSE)
+survey_d75 <- read_tsv("sources/2011 data files online/masterfile11_d75_final.txt",show_col_types = FALSE)
+```
+
+To get an overview of the dataset, let's have a look at the first 10 rows of each:
+
+```{r}
+knitr::kable(head(combined))
+knitr::kable(head(survey_gened))
+knitr::kable(head(survey_d75))
+```
+
+In addition, the `Survey Data Dictionary.xls` files contains the following information about the "Field Names", "Field Series" and "Field Convention" survey data:
+
+```{r}
+library(readxl)
+Field_Names <- read_excel("sources/2011 data files online/Survey Data Dictionary.xls", 
+    range = "A4:B36")
+Field_Series <- read_excel("sources/2011 data files online/Survey Data Dictionary.xls", 
+    range = "A37:B46")
+Field_Convention <- read_excel("sources/2011 data files online/Survey Data Dictionary.xls", 
+    range = "A47:B59")
+```
+
+```{r}
+knitr::kable(Field_Names)
+knitr::kable(Field_Series)
+knitr::kable(Field_Convention)
+```
+
+---
+
+## Simplifying the Dataframes
+
+After observing variables in the survey data, we can see that the variable names refer to schools' scores as determined by different groups' survey responses.
+
+Survey questions assess the following metrics:
+
+- Safety and Respect
+- Communication
+- Engagement
+- Academic Expectations
+
+The following groups responded to the survey:
+
+- Parents
+- Teachers
+- Students
+- Total (The average of parent, teacher, and student scores)
+
+We can significantly simplify the dataframes and make them easier to work with by creating new dataframes that contain only variables aggregating scores based on survey results.
+
+First, we only want to include variables we will need for our analysis. Thus, for the `survey_gened` dataset we will drop all rows *not* containing data from "High School" and include only the columns from `dbn` to `aca_tot_11` (varaibles that contain aggregate scores). The same column filtering will be applied to the `survey_d75` dataset.
+
+```{r}
+survey_select <- survey_gened %>%
+  filter(schooltype=="High School") %>%
+  select(dbn:aca_tot_11)
+
+survey_d75_select <- survey_d75 %>%
+  select(dbn:aca_tot_11)
+```
+
+---
+
+## Creating a Single Dataframe for Analyis
+
+Now that you've simplified them, working with the survey dataframes probably feels more manageable. Next, we want to join the survey data to the `combined` dataframe containing NYC school demographic and test score data.
+
+Therefore, we first join the two survey dataframes:
+
+```{r}
+survey_data <- survey_select %>%
+  bind_rows(survey_d75_select)
+```
+
+Next, we will join the `survey_data` and the `combined` dataframes. Therefore, we rename the `dbn` column to `DBN` of the `survey_data`, so it can be used as key to join with the `combined` data frame.
+
+```{r}
+survey_data <- survey_data %>%
+  rename(DBN=dbn)
+```
+
+Now, we join the `combined` and `survey_total` dataframes using a *left join* to keep only survey data that correspond to schools for which we have data in `combined`.
+
+```{r}
+complete_survey <- combined %>%
+  left_join(survey_data,by="DBN")
+```
+
+---
+
+## Investigating Interesting Correlations and Relationships
+
+Now that you've created a single, clean dataframe to work with, we can begin with our analysis.
+
+Our first question we want to investigate was:
+
+- **Do student, teacher, and parent perceptions of NYC school quality appear to be related to demographic and academic success metrics?**
+
+
+To get an idea of which demographic and test score variables may be related to parent, teacher, and student perceptions of NYC school quality, we'll make a **correlation matrix** of the numeric variables with the `avg_sat_score`. Furthermore, we filter for correlation coefficients higher than 0.25 or lower than -0.25 to identify possible strong correlations and sort them in descending order of their absolute value.
+
+```{r Correlation_matrix_of_demographic_and_score_variables, warning=FALSE}
+cor_mat <- complete_survey %>%  
+  select(where(is.numeric)) %>%
+  cor(use = "pairwise.complete.obs")
+
+cor_tib <- cor_mat %>%#
+  as_tibble(rownames="variable")
+
+SATscore_cors <- cor_tib %>%
+  select(variable,avg_sat_score) %>%
+  filter(avg_sat_score > 0.25 | avg_sat_score < -0.25) %>%
+  mutate(abs_score_cors=abs(avg_sat_score)) %>%
+  arrange(desc(abs_score_cors)) %>%
+  select(-abs_score_cors) %>%
+  mutate(variable=str_replace_all(variable," ","_"))
+
+knitr::kable(SATscore_cors)
+```
+
+The top five strong correlations, that are not directly connected to the SAT score are:
+
+- frl_percent (-0.7235302): 
+- white_per (0.6495892): 
+- Total_Exmas_Taken (0.6071524):
+- asian_per (0.5659381): 
+- dropout_precent (-0.4821499): 
+
+To further examine the correlation, we make scatter plots of the these five variables vs. `avg_sat_score`:
+
+```{r Scatter_plots, warning=FALSE}
+display_scatter <- function(x,y) {
+  ggplot(data=complete_survey ,aes_string(x=x,y=y))+
+  geom_point()+
+  ggtitle(x)
+}
+
+x_vars <- SATscore_cors$variable[c(5,6,8,9,13)]
+y_var <- "avg_sat_score"
+
+column_names <- colnames(complete_survey)
+column_names <- str_replace_all(column_names," ","_")
+colnames(complete_survey) <- column_names
+
+map2(x_vars,y_var,display_scatter)
+```
+
+The scatter plots confirm the strong correlations of the selected variables with the `avg_sat_score` variable. Notably, this shows that the average SAT score is better when more white students (`white_per`), more asian students (`asian_per`) are at a High School and how many total exams are taken (`Total_Exams_Taken`). In contrast, the average SAT score shows a strong negative correlation with the number of offered free and reduced lunches (`frl_percent`) and the number of dropouts (`dropout_percent`).
+
+---
+
+## Differences in Student, Parent, and Teacher Perceptions
+
+We've worked on exploring potential relationships between perspectives of NYC school quality and demographic and academic success metrics.
+
+Furthermore, it  would be interesting to see whether parents, students, and teachers have similar perceptions about the four school quality metrics they were surveyed about:
+
+- Safety and Respect
+- Communication
+- Engagement
+- Academic Expectations
+
+To address this question, we first have to reshape the dataframe to have better visualization possibilities. We start by reshaping the dataframe that the survey questions (like `saf_p_11` and `com_s_11`) and the score (like `8.7` or `9.0`) are in two separate columns.
+
+```{r}
+survey_data_long <- complete_survey %>%
+  pivot_longer(
+    cols = colnames(complete_survey[46:61]),
+    names_to = "Field_Names",
+    values_to = "Scores"
+  ) %>%
+  drop_na(Scores)
+```
+
+After this step, we will create two new variables (`response_type` and `metric`).
+
+- `response_type`: This variable indicates the type of the survey participant - "parent", "teacher", "student", or "total".
+- `metric`: This variable indicates the survey category - "engagement", "academic expectations", "safety and respect", or "communication".
+
+```{r}
+det_response_type <- function(field_name){
+  if (str_detect(field_name,"_p_")){
+    return ("parent")
+  } else if (str_detect(field_name,"_t_")){
+    return ("teacher")
+  } else if (str_detect(field_name,"_s_")){
+    return ("student")
+  } else if (str_detect(field_name,"_tot_")){
+    return ("total")
+  }
+}
+
+det_metric_type <- function(field_name){
+  if (str_starts(field_name,"eng")){
+    return ("engagement")
+  } else if (str_starts(field_name,"aca")){
+    return ("academic expectations")
+  } else if (str_starts(field_name,"saf")){
+    return ("safety and respect")
+  } else if (str_starts(field_name,"com")){
+    return ("communication")
+  }
+}
+
+survey_data_long <- survey_data_long %>%
+  mutate(
+    response_type = map(Field_Names,det_response_type),
+    metric = map(Field_Names,det_metric_type)
+  )
+
+survey_data_long$response_type <- factor(survey_data_long$response_type,levels = c("parent","teacher","student","total"))
+
+survey_data_long$metric <- factor(survey_data_long$metric,levels = c("engagement","academic expectations","safety and respect","communication"))
+```
+
+Now, we are ready to visualize differences in parent, teacher, and student perceptions of NYC school quality metrics using a box plot.
+
+```{r Box_Plot_Response_Scores, fig.height=8, fig.width=10}
+
+survey_data_long %>%
+  ggplot(aes(x=response_type,y=Scores,fill=response_type)) +
+  geom_boxplot()+
+  labs(
+    title = "Response Scores of the Survey Groups to Different Metrics",
+    x = "Score Metric",
+    fill = "Respons Group" 
+  )+
+  facet_wrap(facets = vars(metric),
+             nrow = 2,
+             ncol = 2)
+```
+
+From these box plots, it looks like the **students** replied in general with the *lowest scores* in all four metrics, but this group also has the highest amount of high outlines. I n contrast, the **parents** are the group that gives the *highest scores* in all four metrics. Whereas, the **teachers** are in the *middle field* regarding their scores but with the biggest spreading (highest IQD).
